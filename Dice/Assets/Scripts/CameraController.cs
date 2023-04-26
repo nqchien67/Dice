@@ -21,9 +21,7 @@ namespace Assets.Scripts
 
         private void Start()
         {
-            cam = GetComponent<Camera>();
             originPos = transform.position;
-
             instance = this;
         }
 
