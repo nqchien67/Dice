@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - Dice
+  - Walls
+  - Mob
+  - Arrow
+  - Hurtbox
+  - Gate
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - Wall
+  - Water
+  - UI
+  - Dice
+  - Hurtbox
+  - Mob
+  - Shadow
+  - Projectile
+  - Trap
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Floor
+    uniqueID: 3635152429
+    locked: 0
+  - name: Shadow
+    uniqueID: 2633149813
+    locked: 0
+  - name: DroppedWeapon
+    uniqueID: 3317750073
+    locked: 0
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: Decorators
+    uniqueID: 988612977
+    locked: 0
+  - name: Dice
+    uniqueID: 496604567
+    locked: 0
+  - name: Text
+    uniqueID: 1767819839
+    locked: 0
+  - name: UI
+    uniqueID: 3478427197
+    locked: 0
+  - name: GameOver
+    uniqueID: 2405523411
+    locked: 0
