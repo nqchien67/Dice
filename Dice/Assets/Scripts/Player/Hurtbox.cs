@@ -1,9 +1,9 @@
-﻿using Assets.Scripts.Dice;
+﻿using System;
+using Assets.Scripts.Dice;
 using Assets.Scripts.System;
-using System;
 using UnityEngine;
 
-namespace Assets.Scripts.Player
+namespace Player
 {
     public class Hurtbox : MonoBehaviour
     {
@@ -30,13 +30,13 @@ namespace Assets.Scripts.Player
         private void TriggerHandler(Collider2D other)
         {
             if (!dad.IsKnockbacking &&
-            !dad.isHoldingDice &&
+            !dad.IsHoldingDice &&
             other.CompareTag("Dice"))
             {
                 DiceController dice = other.GetComponent<DiceController>();
                 if (dice.TryPickUp())
                 {
-                    dad.isHoldingDice = true;
+                    dad.IsHoldingDice = true;
                     anim.SetBool("isHoldingDice", true);
 
                     Dice = dice.transform;

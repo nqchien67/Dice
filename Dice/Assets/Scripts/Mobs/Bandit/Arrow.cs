@@ -1,4 +1,5 @@
 ﻿using Assets.Scripts.Player;
+using Player;
 using UnityEngine;
 
 namespace Assets.Scripts.Mobs

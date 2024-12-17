@@ -1,254 +1,245 @@
+using System.Collections;
+using Assets.Scripts;
 using Assets.Scripts.Dice;
 using Assets.Scripts.System.Health;
 using Assets.Scripts.System.Wave;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
-namespace Assets.Scripts.Player
+namespace Player
 {
-    public class PlayerController : MonoBehaviour
-    {
-        [Header("Move")]
-        public float moveSpeed;
+	public class PlayerController : MonoBehaviour
+	{
+		[Header("Move")] public float moveSpeed;
 
-        public float throwPositionOffset;
+		public float throwPositionOffset;
 
-        [Header("Recovery")]
-        public float recoveryTime;
-        private float RemainRecoveryTime;
-        public float blinkTime;
-        private float blinkTimer;
-        public bool IsKnockbacking { get; private set; } = false;
+		[Header("Recovery")] public float recoveryTime;
+		private float RemainRecoveryTime;
+		public float blinkTime;
+		private float blinkTimer;
+		public bool IsKnockbacking { get; private set; }
 
-        [Header("Knockback")]
-        public float kbStrength;
-        public float kbTime;
+		[Header("Knockback")] public float kbStrength;
+		public float kbTime;
 
-        [Header("Dash")]
-        public float dashForce;
-        public float dashLength;
-        public float dashCooldown;
+		[Header("Dash")] public float dashForce;
+		public float dashLength;
+		public float dashCooldown;
 
-        public GameObject dustPrefab;
+		public GameObject dustPrefab;
 
-        private Vector2 dashDirection;
-        private float dashCounter;
-        private float dashCoolCounter;
+		private Vector2 dashDirection;
+		private float dashCounter;
+		private float dashCoolCounter;
 
-        private SpriteRenderer spriteRenderer;
-        private Rigidbody2D rb;
-        private Animator animator;
-        private AnimEventHandler animEvent;
-        private Hurtbox diceHolder;
+		private SpriteRenderer spriteRenderer;
+		private Rigidbody2D rb;
+		private Animator animator;
+		private AnimEventHandler animEvent;
+		private Hurtbox diceHolder;
 
-        private Vector2 movementInput;
+		private Vector2 movementInput;
 
-        private bool canMove = true;
+		private bool canMove = true;
 
-        [HideInInspector] public bool isHoldingDice;
+		public bool IsHoldingDice { get; set; }
 
-        private void Awake()
-        {
-            rb = GetComponent<Rigidbody2D>();
-            animator = transform.GetChild(0).GetComponent<Animator>();
-            spriteRenderer = GetComponentInChildren<SpriteRenderer>();
-            animEvent = GetComponentInChildren<AnimEventHandler>();
-            diceHolder = GetComponentInChildren<Hurtbox>();
-        }
+		private static readonly int SpawnAnimId = Animator.StringToHash("spawn");
+		private static readonly int IsMovingAnimId = Animator.StringToHash("isMoving");
+		private static readonly int HurtAnimId = Animator.StringToHash("hurt");
+		private static readonly int DieAnimId = Animator.StringToHash("die");
+		private static readonly int HoldingDiceAnimId = Animator.StringToHash("isHoldingDice");
+		private static readonly int Roll = Animator.StringToHash("roll");
 
-        private void Start()
-        {
-            blinkTimer = Time.time;
-            animEvent.OnEndKnockback += StartRecovery;
-            animEvent.OnDead += Dead;
+		private void Awake()
+		{
+			rb = GetComponent<Rigidbody2D>();
+			animator = transform.GetChild(0).GetComponent<Animator>();
+			spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+			animEvent = GetComponentInChildren<AnimEventHandler>();
+			diceHolder = GetComponentInChildren<Hurtbox>();
+		}
 
-            animator.SetTrigger("spawn");
-        }
+		private void Start()
+		{
+			blinkTimer = Time.time;
+			animEvent.OnEndKnockback += StartRecovery;
+			animEvent.OnDead += Dead;
 
-        private void FixedUpdate()
-        {
-            MoveHandle();
-            DashHandle();
-            RecoveryHandle();
-        }
+			animator.SetTrigger(SpawnAnimId);
+		}
 
-        private void MoveHandle()
-        {
-            if (!canMove)
-                return;
+		private void FixedUpdate()
+		{
+			MoveHandle();
+			DashHandle();
+			RecoveryHandle();
+		}
 
-            float actualSpeed = isHoldingDice ? moveSpeed * 0.85f : moveSpeed;
-            rb.velocity = movementInput * actualSpeed;
+		private void MoveHandle()
+		{
+			if (!canMove)
+				return;
 
-            if (movementInput != Vector2.zero)
-                animator.SetBool("isMoving", true);
-            else
-                animator.SetBool("isMoving", false);
+			float actualSpeed = IsHoldingDice ? moveSpeed * 0.85f : moveSpeed;
+			rb.velocity = movementInput * actualSpeed;
 
-            if (movementInput.x < 0)
-                spriteRenderer.flipX = true;
+			animator.SetBool(IsMovingAnimId, movementInput != Vector2.zero);
 
-            else if (movementInput.x > 0)
-                spriteRenderer.flipX = false;
-        }
+			if(movementInput.x != 0)
+				spriteRenderer.flipX = movementInput.x < 0;
+		}
 
-        private void DashHandle()
-        {
-            if (dashCoolCounter > 0)
-                dashCoolCounter -= Time.fixedDeltaTime;
+		private void DashHandle()
+		{
+			if (dashCoolCounter > 0)
+				dashCoolCounter -= Time.fixedDeltaTime;
 
-            if (dashCounter > 0)
-            {
-                rb.AddForce(dashDirection * dashForce, ForceMode2D.Impulse);
-                dashCounter -= Time.fixedDeltaTime;
+			if (dashCounter > 0)
+			{
+				rb.AddForce(dashDirection * dashForce, ForceMode2D.Impulse);
+				dashCounter -= Time.fixedDeltaTime;
 
-                if (dashCounter <= 0)
-                {
-                    dashCoolCounter = dashCooldown;
-                }
-            }
+				if (dashCounter <= 0) dashCoolCounter = dashCooldown;
+			}
+		}
 
-        }
+		private void RecoveryHandle()
+		{
+			if (RemainRecoveryTime > 0)
+			{
+				if (Time.time - blinkTimer > blinkTime)
+				{
+					spriteRenderer.enabled = !spriteRenderer.enabled;
+					blinkTimer = Time.time;
+				}
 
-        private void RecoveryHandle()
-        {
-            if (RemainRecoveryTime > 0)
-            {
-                if (Time.time - blinkTimer > blinkTime)
-                {
-                    spriteRenderer.enabled = !spriteRenderer.enabled;
+				RemainRecoveryTime -= Time.fixedDeltaTime;
 
-                    blinkTimer = Time.time;
-                }
+				if (RemainRecoveryTime < 0) spriteRenderer.enabled = true;
+			}
+		}
 
-                RemainRecoveryTime -= Time.fixedDeltaTime;
+		public bool Hit(Vector2 knockbackDirection, bool canAvoid = true)
+		{
+			if (canAvoid &&
+			    (IsKnockbacking || RemainRecoveryTime > 0 || dashCounter > 0))
+				return false;
 
-                if (RemainRecoveryTime < 0)
-                {
-                    spriteRenderer.enabled = true;
+			HealthBar.instance.LoseHealth();
 
-                }
-            }
-        }
+			animator.SetTrigger(HurtAnimId);
 
-        public bool Hit(Vector2 knockbackDirection, bool canAvoid = true)
-        {
-            if (canAvoid &&
-                (IsKnockbacking || RemainRecoveryTime > 0 || dashCounter > 0))
-                return false;
+			DropDice();
 
-            HealthBar.instance.LoseHealth();
+			StartCoroutine(Knockback(knockbackDirection));
 
-            animator.SetTrigger("hurt");
+			if (HealthBar.instance.GetCurrentHealth() <= 0)
+				Die();
 
-            DropDice();
+			return true;
+		}
 
-            StartCoroutine(Knockback(knockbackDirection));
+		private void Die()
+		{
+			spriteRenderer.sortingLayerName = "GameOver";
+			GetComponent<SortingGroup>().enabled = false;
+			animator.SetTrigger(DieAnimId);
+		}
 
-            if (HealthBar.instance.GetCurrentHealth() <= 0)
-                Die();
+		private void DropDice()
+		{
+			if (IsHoldingDice)
+			{
+				Transform dice = diceHolder.Dice;
+				dice.position = transform.position;
+				dice.GetComponent<DiceController>().Drop();
 
-            return true;
-        }
+				IsHoldingDice = false;
 
-        private void Die()
-        {
-            spriteRenderer.sortingLayerName = "GameOver";
-            GetComponent<SortingGroup>().enabled = false;
-            animator.SetTrigger("die");
-        }
+				animator.SetBool(HoldingDiceAnimId, false);
+			}
+		}
 
-        private void DropDice()
-        {
-            if (isHoldingDice)
-            {
-                Transform dice = diceHolder.Dice;
-                dice.position = transform.position;
-                dice.GetComponent<DiceController>().Drop();
+		private IEnumerator Knockback(Vector2 direction)
+		{
+			IsKnockbacking = true;
+			canMove = false;
 
-                isHoldingDice = false;
+			CameraController.instance.StartShake(0.12f, 0.1f);
 
-                animator.SetBool("isHoldingDice", false);
-            }
-        }
+			rb.velocity = Vector2.zero;
+			rb.AddForce(direction * kbStrength, ForceMode2D.Impulse);
+			yield return new WaitForSeconds(kbTime);
+			canMove = true;
+		}
 
-        private IEnumerator Knockback(Vector2 direction)
-        {
-            IsKnockbacking = true;
-            canMove = false;
+		private void OnMove(InputValue movementValue)
+		{
+			movementInput = movementValue.Get<Vector2>();
+		}
 
-            CameraController.instance.StartShake(0.12f, 0.1f);
+		private void OnFire()
+		{
+			if (IsHoldingDice)
+			{
+				Vector2 mousePosition = CameraController.Cam.ScreenToWorldPoint(Input.mousePosition);
+				Vector2 direction = (mousePosition - (Vector2)transform.position).normalized;
 
-            rb.velocity = Vector2.zero;
-            rb.AddForce(direction * kbStrength, ForceMode2D.Impulse);
-            yield return new WaitForSeconds(kbTime);
-            canMove = true;
-        }
+				Transform dice = diceHolder.Dice;
 
-        private void OnMove(InputValue movementValue)
-        {
-            movementInput = movementValue.Get<Vector2>();
-        }
+				RaycastHit2D hitWall = Physics2D.Raycast(transform.position, direction, 1, 1 << 3);
+				if (hitWall)
+					dice.position = (Vector2)transform.position - direction * hitWall.distance;
+				else
+					dice.position = (Vector2)transform.position + direction * throwPositionOffset;
 
-        private void OnFire()
-        {
-            if (isHoldingDice)
-            {
-                Vector2 mousePostion = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                Vector2 direction = (mousePostion - (Vector2)transform.position).normalized;
+				dice.GetComponent<DiceController>().Throw(direction);
 
-                Transform dice = diceHolder.Dice;
+				IsHoldingDice = false;
+				animator.SetBool(HoldingDiceAnimId, false);
+			}
+		}
 
-                RaycastHit2D hitWall = Physics2D.Raycast(transform.position, direction, 1, 1 << 3);
-                if (hitWall)
-                    dice.position = (Vector2)transform.position - direction * hitWall.distance;
-                else
-                    dice.position = (Vector2)transform.position + direction * throwPositionOffset;
+		private void OnDash()
+		{
+			if (dashCoolCounter <= 0 && dashCounter <= 0 && !IsKnockbacking)
+			{
+				dashCounter = dashLength;
+				dashDirection = Vector2.zero;
+				if (movementInput == Vector2.zero)
+					dashDirection.x = spriteRenderer.flipX ? -1 : 1;
+				else
+					dashDirection = movementInput;
 
-                dice.GetComponent<DiceController>().Throw(direction);
+				animator.SetTrigger(Roll);
+				RenderDust();
+			}
+		}
 
-                isHoldingDice = false;
-                animator.SetBool("isHoldingDice", false);
-            }
-        }
+		private void RenderDust()
+		{
+			GameObject dust = Instantiate(dustPrefab, transform.position, Quaternion.identity);
+			dust.GetComponentInChildren<SpriteRenderer>().flipX = !spriteRenderer.flipX;
+		}
 
-        private void OnDash()
-        {
-            if (dashCoolCounter <= 0 && dashCounter <= 0 && !IsKnockbacking)
-            {
-                dashCounter = dashLength;
-                dashDirection = Vector2.zero;
-                if (movementInput == Vector2.zero)
-                    dashDirection.x = spriteRenderer.flipX ? -1 : 1;
-                else
-                    dashDirection = movementInput;
+		#region Animation Trigger
 
-                animator.SetTrigger("roll");
-                RenderDust();
-            }
-        }
+		private void StartRecovery()
+		{
+			RemainRecoveryTime = recoveryTime;
+			IsKnockbacking = false;
+		}
 
-        private void RenderDust()
-        {
-            GameObject dust = Instantiate(dustPrefab, transform.position, Quaternion.identity);
-            dust.GetComponentInChildren<SpriteRenderer>().flipX = !spriteRenderer.flipX;
-        }
+		private void Dead()
+		{
+			rb.simulated = false;
+			WaveManager.instance.StopHesAlreadyDead();
+			enabled = false;
+		}
 
-        #region Animation Trigger
-        private void StartRecovery()
-        {
-            RemainRecoveryTime = recoveryTime;
-            IsKnockbacking = false;
-        }
-
-        private void Dead()
-        {
-            rb.simulated = false;
-            WaveManager.instance.StopHesAlreadyDead();
-            this.enabled = false;
-        }
-        #endregion
-    }
+		#endregion
+	}
 }
